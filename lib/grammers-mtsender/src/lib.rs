@@ -628,7 +628,7 @@ impl<T: Transport, M: Mtp> Sender<T, M> {
             }
 
             if !found {
-                info!("got rpc result {:?} but no such request is saved", msg_id);
+                warn!("got rpc result {:?} but no such request is saved", msg_id);
             }
         }
     }
