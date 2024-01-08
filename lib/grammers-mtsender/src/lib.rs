@@ -253,7 +253,8 @@ impl<T: Transport, M: Mtp> Sender<T, M> {
         assert!(body.len() >= 4);
         let req_id = u32::from_le_bytes([body[0], body[1], body[2], body[3]]);
         debug!(
-            "enqueueing request {} to be serialized",
+            "enqueueing request {:x} ({}) to be serialized",
+            req_id,
             tl::name_for_id(req_id)
         );
 
@@ -404,15 +405,15 @@ impl<T: Transport, M: Mtp> Sender<T, M> {
             .iter_mut()
             .filter(|r| matches!(r.state, RequestState::NotSerialized))
         {
+            let req_id = u32::from_le_bytes([
+                request.body[0],
+                request.body[1],
+                request.body[2],
+                request.body[3],
+            ]);
             // TODO make mtp itself use BytesMut to avoid copies
             if let Some(msg_id) = self.mtp.push(&mut self.write_buffer, &request.body) {
                 assert!(request.body.len() >= 4);
-                let req_id = u32::from_le_bytes([
-                    request.body[0],
-                    request.body[1],
-                    request.body[2],
-                    request.body[3],
-                ]);
                 debug!(
                     "serialized request {:x} ({}) with {:?}",
                     req_id,
@@ -424,7 +425,12 @@ impl<T: Transport, M: Mtp> Sender<T, M> {
                 // (e.g. infinite loops leading to transport flood.)
                 request.state = RequestState::Serialized(msg_id);
             } else {
-                break;
+                // TODO: check if request should be resend?
+                warn!(
+                    "MTP buffer was full while tried to serialize request {:x} ({}). Not sure the request's fate",
+                    req_id,
+                    tl::name_for_id(req_id),
+                );
             }
         }
 
