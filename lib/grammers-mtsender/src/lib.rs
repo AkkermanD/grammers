@@ -505,7 +505,7 @@ impl<T: Transport, M: Mtp> Sender<T, M> {
     /// Handle a ping timeout, meaning we need to enqueue a new ping request.
     fn on_ping_timeout(&mut self) {
         let ping_id = generate_random_id();
-        log::error!("enqueueing keepalive ping {}", ping_id);
+        debug!("enqueueing keepalive ping {}", ping_id);
         let ping_rx = self.enqueue_body(
             tl::functions::PingDelayDisconnect {
                 ping_id,
@@ -514,8 +514,18 @@ impl<T: Transport, M: Mtp> Sender<T, M> {
             .to_bytes(),
         );
         tokio::spawn(async move {
-            if let Err(err) = ping_rx.await {
-                log::error!("Got error during ping request: {:?}", err);
+            match ping_rx.await {
+                Ok(rez) => match rez {
+                    Ok(rez) => {
+                        debug!("Got ping request result: {:?}", rez);
+                    }
+                    Err(err) => {
+                        log::error!("Got ping request invocation error: {:?}", err);
+                    }
+                },
+                Err(err) => {
+                    log::error!("Got channel error from ping request: {:?}", err);
+                }
             }
         });
         self.next_ping = Instant::now() + PING_DELAY;
