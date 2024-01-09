@@ -445,6 +445,12 @@ impl<T: Transport, M: Mtp> Sender<T, M> {
     /// This won't cause `ReadError::Io`, but yet another enum would be overkill.
     fn on_net_read(&mut self, n: usize) -> Result<Vec<tl::enums::Updates>, ReadError> {
         if n == 0 {
+            debug!(
+                "Got 0 bytes from network. Read buffer size: {}, read index: {}, effective buffer size: {}",
+                self.read_buffer.len(),
+                self.read_index,
+                self.read_buffer[self.read_index..].len()
+            );
             return Err(ReadError::Io(io::Error::new(
                 io::ErrorKind::ConnectionReset,
                 "read 0 bytes",
@@ -483,7 +489,7 @@ impl<T: Transport, M: Mtp> Sender<T, M> {
                 Err(transport::Error::MissingBytes) => {
                     warn!("Got MissingBytes error during unpack");
                     break;
-                },
+                }
                 Err(err) => return Err(err.into()),
             }
         }
