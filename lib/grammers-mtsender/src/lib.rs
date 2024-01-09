@@ -462,9 +462,19 @@ impl<T: Transport, M: Mtp> Sender<T, M> {
             match self.transport.unpack(&self.read_buffer[..self.read_index]) {
                 Ok(offset) => {
                     debug!("deserializing valid transport packet...");
-                    let result = self
+                    let result = match self
                         .mtp
-                        .deserialize(&self.read_buffer[offset.data_start..offset.data_end])?;
+                        .deserialize(&self.read_buffer[offset.data_start..offset.data_end])
+                    {
+                        Ok(rez) => {
+                            debug!("transport packet deserialized");
+                            rez
+                        }
+                        Err(err) => {
+                            warn!("transport packet deserialization error: {err:?}");
+                            return Err(err.into());
+                        }
+                    };
 
                     self.process_mtp_buffer(result, &mut updates);
                     self.read_buffer.skip(offset.next_offset);
