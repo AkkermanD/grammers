@@ -480,7 +480,10 @@ impl<T: Transport, M: Mtp> Sender<T, M> {
                     self.read_buffer.skip(offset.next_offset);
                     self.read_index -= offset.next_offset;
                 }
-                Err(transport::Error::MissingBytes) => break,
+                Err(transport::Error::MissingBytes) => {
+                    warn!("Got MissingBytes error during unpack");
+                    break;
+                },
                 Err(err) => return Err(err.into()),
             }
         }
@@ -532,8 +535,8 @@ impl<T: Transport, M: Mtp> Sender<T, M> {
         tokio::spawn(async move {
             match ping_rx.await {
                 Ok(rez) => match rez {
-                    Ok(rez) => {
-                        debug!("Got ping request result: {:?}", rez);
+                    Ok(_) => {
+                        debug!("Got ping request result from channel");
                     }
                     Err(err) => {
                         log::error!("Got ping request invocation error: {:?}", err);
